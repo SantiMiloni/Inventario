@@ -1,15 +1,23 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
+#include <Adafruit_NeoPixel.h>
 
+#define PIN_LED 33
+#define NUM_LEDS 64
+#define size(x) (sizeof(x) / sizeof(x[0]))
+
+Adafruit_NeoPixel matriz(NUM_LEDS, PIN_LED, NEO_GBR + NEO_KHZ800);
+
+int c1[] = { 0, 1, 2 }; int c2[] = { 5, 6, 7 }; int c3[] = { 8, 9, 10 }; int c4[] = { 13, 14, 15 }; int c5[] = { 16, 17, 18 }; int c6[] = { 21, 22, 23 };
 
 // ======================================================
 // WIFI
 // ======================================================
 
-const char* SSID = "MECA.IoT";
+const char* SSID = "MECA-IoT";
 
-const char* PASSWORD = "CONTRASEÑA_DE_TU_WIFI";
+const char* PASSWORD = "IoT$2027";
 
 
 // ======================================================
@@ -17,11 +25,11 @@ const char* PASSWORD = "CONTRASEÑA_DE_TU_WIFI";
 // ======================================================
 
 const char* URL_CAJON =
-    "https://base-de-datos---inventario-default-rtdb.firebaseio.com/comando/cajon.json";
+  "https://base-de-datos---inventario-default-rtdb.firebaseio.com/comando/cajon.json";
 
 
 const char* URL_EVENTO =
-    "https://base-de-datos---inventario-default-rtdb.firebaseio.com/comando/evento.json";
+  "https://base-de-datos---inventario-default-rtdb.firebaseio.com/comando/evento.json";
 
 
 // ======================================================
@@ -42,18 +50,17 @@ const unsigned long INTERVALO_FIREBASE = 1000;
 // ======================================================
 // DECLARACIONES
 // ======================================================
+void pixels(int array[], int size);
 
 void conectarWiFi();
 
-void revisarFirebase();
+int revisarFirebase();
 
 int leerEnteroFirebase(
-    const char* url
-);
+  const char* url);
 
 unsigned long leerUnsignedLongFirebase(
-    const char* url
-);
+  const char* url);
 
 
 // ======================================================
@@ -62,27 +69,29 @@ unsigned long leerUnsignedLongFirebase(
 
 void setup() {
 
-    Serial.begin(115200);
+  Serial.begin(115200);
 
-    delay(1000);
+  matriz.begin();
+  matriz.clear();
+  matriz.show();
+  matriz.setBrightness(200);
 
-
-    Serial.println();
-    Serial.println();
-    Serial.println(
-        "=============================="
-    );
-
-    Serial.println(
-        "      SISTEMA PAÑOL"
-    );
-
-    Serial.println(
-        "=============================="
-    );
+  delay(1000);
 
 
-    conectarWiFi();
+  Serial.println();
+  Serial.println();
+  Serial.println(
+    "==============================");
+
+  Serial.println(
+    "      SISTEMA PAÑOL");
+
+  Serial.println(
+    "==============================");
+
+
+  conectarWiFi();
 }
 
 
@@ -92,38 +101,74 @@ void setup() {
 
 void loop() {
 
-    // ------------------------------------------
-    // RECONECTAR WIFI SI SE DESCONECTA
-    // ------------------------------------------
+  // ------------------------------------------
+  // RECONECTAR WIFI SI SE DESCONECTA
+  // ------------------------------------------
 
-    if (
-        WiFi.status() !=
-        WL_CONNECTED
-    ) {
+  if (
+    WiFi.status() != WL_CONNECTED) {
 
-        Serial.println(
-            "WiFi desconectado."
-        );
+    Serial.println(
+      "WiFi desconectado.");
 
-        conectarWiFi();
-    }
+    conectarWiFi();
+  }
 
 
-    // ------------------------------------------
-    // CONSULTAR FIREBASE
-    // ------------------------------------------
+  // ------------------------------------------
+  // CONSULTAR FIREBASE
+  // ------------------------------------------
 
-    if (
-        millis() - ultimoChequeo >=
-        INTERVALO_FIREBASE
-    ) {
+  if (
+    millis() - ultimoChequeo >= INTERVALO_FIREBASE) {
 
-        ultimoChequeo =
-            millis();
+    ultimoChequeo =
+      millis();
 
 
-        revisarFirebase();
-    }
+    revisarFirebase();
+  }
+  switch (revisarFirebase()) {
+    case 1:
+      Serial.println("Mostrando case 1");
+      matriz.clear();
+      pixels(c1, size(c1));
+      matriz.show();
+      break;
+    case 2:
+      Serial.println("Mostrando case 2");
+      matriz.clear();
+      pixels(c2, size(c2));
+      matriz.show();
+      break;
+    case 3:
+      Serial.println("Mostrando case 3");
+      matriz.clear();
+      pixels(c3, size(c3));
+      matriz.show();
+      break;
+    case 4:
+      Serial.println("Mostrando case 4");
+      matriz.clear();
+      pixels(c4, size(c4));
+      matriz.show();
+      break;
+    case 5:
+      Serial.println("Mostrando case 5");
+      matriz.clear();
+      pixels(c5, size(c5));
+      matriz.show();
+      break;
+    case 6:
+      Serial.println("Mostrando case 6");
+      matriz.clear();
+      pixels(c6, size(c6));
+      matriz.show();
+      break;
+    default:
+      matriz.clear();
+      break;
+  }
 }
 
 
@@ -133,93 +178,79 @@ void loop() {
 
 void conectarWiFi() {
 
-    Serial.println();
-    Serial.print(
-        "Conectando a: "
-    );
+  Serial.println();
+  Serial.print(
+    "Conectando a: ");
 
-    Serial.println(
-        SSID
-    );
+  Serial.println(
+    SSID);
 
 
-    WiFi.begin(
+  WiFi.begin(
+    SSID,
+    PASSWORD);
+
+
+  int intentos = 0;
+
+
+  while (
+    WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+
+    Serial.print(".");
+
+
+    intentos++;
+
+
+    if (
+      intentos >= 40) {
+
+      Serial.println();
+      Serial.println(
+        "No se pudo conectar.");
+
+
+      WiFi.disconnect();
+
+      delay(1000);
+
+
+      WiFi.begin(
         SSID,
-        PASSWORD
-    );
+        PASSWORD);
 
 
-    int intentos = 0;
-
-
-    while (
-        WiFi.status() !=
-        WL_CONNECTED
-    ) {
-
-        delay(500);
-
-        Serial.print(".");
-
-
-        intentos++;
-
-
-        if (
-            intentos >= 40
-        ) {
-
-            Serial.println();
-            Serial.println(
-                "No se pudo conectar."
-            );
-
-
-            WiFi.disconnect();
-
-            delay(1000);
-
-
-            WiFi.begin(
-                SSID,
-                PASSWORD
-            );
-
-
-            intentos = 0;
-        }
+      intentos = 0;
     }
+  }
 
 
-    Serial.println();
-    Serial.println(
-        "WiFi conectado correctamente."
-    );
+  Serial.println();
+  Serial.println(
+    "WiFi conectado correctamente.");
 
 
-    Serial.print(
-        "IP del ESP32: "
-    );
+  Serial.print(
+    "IP del ESP32: ");
 
-    Serial.println(
-        WiFi.localIP()
-    );
+  Serial.println(
+    WiFi.localIP());
 
 
-    Serial.print(
-        "Potencia WiFi: "
-    );
+  Serial.print(
+    "Potencia WiFi: ");
 
-    Serial.print(
-        WiFi.RSSI()
-    );
+  Serial.print(
+    WiFi.RSSI());
 
-    Serial.println(
-        " dBm"
-    );
+  Serial.println(
+    " dBm");
 
 
-    Serial.println();
+  Serial.println();
 }
 
 
@@ -227,9 +258,9 @@ void conectarWiFi() {
 // REVISAR FIREBASE
 // ======================================================
 
-void revisarFirebase() {
+int revisarFirebase() {
 
-    /*
+  /*
         Primero leemos "evento".
 
         Si evento cambió significa que alguien
@@ -239,103 +270,90 @@ void revisarFirebase() {
     */
 
 
-    unsigned long nuevoEvento =
-        leerUnsignedLongFirebase(
-            URL_EVENTO
-        );
+  unsigned long nuevoEvento =
+    leerUnsignedLongFirebase(
+      URL_EVENTO);
 
 
-    if (
-        nuevoEvento == 0
-    ) {
+  if (
+    nuevoEvento == 0) {
 
-        return;
-    }
-
-
-    // Si es el mismo evento, no hacemos nada
-    if (
-        nuevoEvento ==
-        eventoActual
-    ) {
-
-        return;
-    }
+    return -1;
+  }
 
 
-    // Guardamos el nuevo evento
-    eventoActual =
-        nuevoEvento;
+  // Si es el mismo evento, no hacemos nada
+  if (
+    nuevoEvento == eventoActual) {
+
+    return -1;
+  }
 
 
-    // Ahora leemos el cajón
-    int nuevoCajon =
-        leerEnteroFirebase(
-            URL_CAJON
-        );
+  // Guardamos el nuevo evento
+  eventoActual =
+    nuevoEvento;
 
 
-    if (
-        nuevoCajon <= 0
-    ) {
-
-        Serial.println(
-            "Se recibió un cajón inválido."
-        );
-
-        return;
-    }
+  // Ahora leemos el cajón
+  int nuevoCajon =
+    leerEnteroFirebase(
+      URL_CAJON);
 
 
-    cajonActual =
-        nuevoCajon;
-
-
-    // ==========================================
-    // NUEVA ORDEN
-    // ==========================================
-
-    Serial.println();
+  if (
+    nuevoCajon <= 0) {
 
     Serial.println(
-        "=============================="
-    );
+      "Se recibió un cajón inválido.");
 
-    Serial.println(
-        "NUEVA SOLICITUD"
-    );
+    return -1;
+  }
 
 
-    Serial.print(
-        "Cajón: "
-    );
-
-    Serial.println(
-        cajonActual
-    );
+  cajonActual =
+    nuevoCajon;
 
 
-    Serial.print(
-        "Evento: "
-    );
+  // ==========================================
+  // NUEVA ORDEN
+  // ==========================================
 
-    Serial.println(
-        eventoActual
-    );
+  Serial.println();
+
+  Serial.println(
+    "==============================");
+
+  Serial.println(
+    "NUEVA SOLICITUD");
 
 
-    Serial.println(
-        "=============================="
-    );
+  Serial.print(
+    "Cajón: ");
+
+  Serial.println(
+    cajonActual);
 
 
-    /*
+  Serial.print(
+    "Evento: ");
+
+  Serial.println(
+    eventoActual);
+
+
+  Serial.println(
+    "==============================");
+
+
+  /*
         MÁS ADELANTE:
 
         prenderCajon(
             cajonActual
         );
     */
+  return cajonActual;
 }
 
 
@@ -344,22 +362,19 @@ void revisarFirebase() {
 // ======================================================
 
 int leerEnteroFirebase(
-    const char* url
-) {
+  const char* url) {
 
-    if (
-        WiFi.status() !=
-        WL_CONNECTED
-    ) {
+  if (
+    WiFi.status() != WL_CONNECTED) {
 
-        return -1;
-    }
+    return -1;
+  }
 
 
-    WiFiClientSecure client;
+  WiFiClientSecure client;
 
 
-    /*
+  /*
         Para las primeras pruebas usamos
         setInsecure().
 
@@ -369,70 +384,62 @@ int leerEnteroFirebase(
         Más adelante podemos mejorarlo.
     */
 
-    client.setInsecure();
+  client.setInsecure();
 
 
-    HTTPClient https;
+  HTTPClient https;
 
 
-    if (
-        !https.begin(
-            client,
-            url
-        )
-    ) {
+  if (
+    !https.begin(
+      client,
+      url)) {
 
-        Serial.println(
-            "Error iniciando HTTPS."
-        );
+    Serial.println(
+      "Error iniciando HTTPS.");
 
-        return -1;
-    }
+    return -1;
+  }
 
 
-    int codigoHTTP =
-        https.GET();
+  int codigoHTTP =
+    https.GET();
 
 
-    if (
-        codigoHTTP !=
-        HTTP_CODE_OK
-    ) {
+  if (
+    codigoHTTP != HTTP_CODE_OK) {
 
-        Serial.print(
-            "Error HTTP cajón: "
-        );
+    Serial.print(
+      "Error HTTP cajón: ");
 
-        Serial.println(
-            codigoHTTP
-        );
-
-
-        https.end();
-
-        return -1;
-    }
-
-
-    String respuesta =
-        https.getString();
+    Serial.println(
+      codigoHTTP);
 
 
     https.end();
 
-
-    respuesta.trim();
-
-
-    if (
-        respuesta == "null"
-    ) {
-
-        return -1;
-    }
+    return -1;
+  }
 
 
-    return respuesta.toInt();
+  String respuesta =
+    https.getString();
+
+
+  https.end();
+
+
+  respuesta.trim();
+
+
+  if (
+    respuesta == "null") {
+
+    return -1;
+  }
+
+
+  return respuesta.toInt();
 }
 
 
@@ -441,86 +448,80 @@ int leerEnteroFirebase(
 // ======================================================
 
 unsigned long leerUnsignedLongFirebase(
-    const char* url
-) {
+  const char* url) {
 
-    if (
-        WiFi.status() !=
-        WL_CONNECTED
-    ) {
+  if (
+    WiFi.status() != WL_CONNECTED) {
 
-        return 0;
-    }
+    return 0;
+  }
 
 
-    WiFiClientSecure client;
+  WiFiClientSecure client;
 
-    client.setInsecure();
-
-
-    HTTPClient https;
+  client.setInsecure();
 
 
-    if (
-        !https.begin(
-            client,
-            url
-        )
-    ) {
-
-        Serial.println(
-            "Error iniciando HTTPS."
-        );
-
-        return 0;
-    }
+  HTTPClient https;
 
 
-    int codigoHTTP =
-        https.GET();
+  if (
+    !https.begin(
+      client,
+      url)) {
+
+    Serial.println(
+      "Error iniciando HTTPS.");
+
+    return 0;
+  }
 
 
-    if (
-        codigoHTTP !=
-        HTTP_CODE_OK
-    ) {
-
-        Serial.print(
-            "Error HTTP evento: "
-        );
-
-        Serial.println(
-            codigoHTTP
-        );
+  int codigoHTTP =
+    https.GET();
 
 
-        https.end();
+  if (
+    codigoHTTP != HTTP_CODE_OK) {
 
-        return 0;
-    }
+    Serial.print(
+      "Error HTTP evento: ");
 
-
-    String respuesta =
-        https.getString();
+    Serial.println(
+      codigoHTTP);
 
 
     https.end();
 
-
-    respuesta.trim();
-
-
-    if (
-        respuesta == "null"
-    ) {
-
-        return 0;
-    }
+    return 0;
+  }
 
 
-    return strtoul(
-        respuesta.c_str(),
-        nullptr,
-        10
-    );
+  String respuesta =
+    https.getString();
+
+
+  https.end();
+
+
+  respuesta.trim();
+
+
+  if (
+    respuesta == "null") {
+
+    return 0;
+  }
+
+
+  return strtoul(
+    respuesta.c_str(),
+    nullptr,
+    10);
+}
+
+void pixels(int array[], int arraySize) {
+  for (int i = 0; i < arraySize; i++) {
+    matriz.setPixelColor(array[i], 0, 30, 10);
+  }
 }
